@@ -26,7 +26,12 @@ PRIVATE void set_cursor(unsigned int position);
 PRIVATE void set_video_start_addr(u32 addr);
 PRIVATE void flush(CONSOLE* p_con);
 
-extern int SEARCH_MODE;
+EXTERN int SEARCH_MODE;
+
+PUBLIC u32 enterList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+PUBLIC u32 *p_enter = &enterList[0];
+PUBLIC u32 tabList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+PUBLIC u32 *p_tab = &tabList[0];
 
 /*======================================================================*
 			   init_screen
@@ -80,21 +85,59 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 	case '\n':
 		if(SEARCH_MODE == 1){
 			SEARCH_MODE = 0;
+			//TODO: SEARCH MODE
 			break;
 		}
 		if (p_con->cursor < p_con->original_addr +
 		    p_con->v_mem_limit - SCREEN_WIDTH) {
+			if(p_enter < &enterList[25]){
+				*p_enter = p_con->cursor;
+				p_enter++;
+			}
 			p_con->cursor = p_con->original_addr + SCREEN_WIDTH * 
 				((p_con->cursor - p_con->original_addr) /
 				 SCREEN_WIDTH + 1);
 		}
 		break;
+	case '\t':
+	  if (p_con->cursor <
+		    p_con->original_addr + p_con->v_mem_limit - 1) {
+			if(p_tab < &tabList[25]){
+				*p_tab = p_con->cursor;
+				p_tab++;
+			}
+			for(int i = 0; i < 4; i++){
+				*p_vmem++ = ' ';
+				*p_vmem++ = DEFAULT_CHAR_COLOR;
+				p_con->cursor++;
+			}
+		}
+		break;
 	case '\b':
 
 		if (p_con->cursor > p_con->original_addr) {
-			p_con->cursor--;
-			*(p_vmem-2) = ' ';
-			*(p_vmem-1) = DEFAULT_CHAR_COLOR;
+			if((p_con->cursor - p_con->original_addr) % 80 == 0){
+				for(int i = 0; &enterList[i] <= p_enter; i++){
+					if(enterList[i] >= p_con->cursor - 80 && enterList[i] < p_con->cursor){
+						p_con->cursor = enterList[i];
+						break;
+					}
+				}
+			}else{
+				short flag = 0;
+				for(int i = 0; &tabList[i] <= p_tab; i++){
+					if(tabList[i] == p_con->cursor - 4){
+						p_con->cursor = tabList[i];
+						flag = 1;
+						break;
+					}
+				}
+				if(!flag){
+					p_con->cursor--;
+					*(p_vmem-2) = ' ';
+					*(p_vmem-1) = DEFAULT_CHAR_COLOR;
+				}
+			}
 		}
 		break;
 	default:
