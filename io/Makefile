@@ -42,6 +42,9 @@ everything : $(ORANGESBOOT) $(ORANGESKERNEL)
 
 all : realclean everything
 
+run: image
+	bochs -f bochsrc
+
 image : realclean everything clean buildimg
 
 clean :
@@ -60,9 +63,6 @@ buildimg :
 	sudo cp -fv boot/loader.bin /mnt/floppy/
 	sudo cp -fv kernel.bin /mnt/floppy
 	sudo umount /mnt/floppy
-
-run: image
-	bochs -f bochsrc
 
 boot/boot.bin : boot/boot.asm boot/include/load.inc boot/include/fat12hdr.inc
 	$(ASM) $(ASMBFLAGS) -o $@ $<

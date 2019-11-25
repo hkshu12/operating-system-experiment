@@ -29,13 +29,16 @@ PRIVATE void search(CONSOLE* p_con, char *str, u8 color);
 
 EXTERN int SEARCH_MODE;/* 搜索模式不同阶段 */
 
-PUBLIC u32 enterList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-PUBLIC u32 *p_enter = &enterList[0];
-PUBLIC u32 tabList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-PUBLIC u32 *p_tab = &tabList[0];
-PRIVATE char str[256] = {'\0'};
-PRIVATE char *p_str = &str[0];
+PRIVATE u32 enterList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+PRIVATE u32 *p_enter = &enterList[0];
+PRIVATE u32 tabList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+PRIVATE u32 *p_tab = &tabList[0];
+PRIVATE char str[256];
+PRIVATE char *p_str;
+PRIVATE u8 *str_tab[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+PRIVATE u8 *p_str_tab = &str_tab[0];
 PRIVATE u32 cursorPos; /* 用于存储进入搜索模式前的cursor位置 */
+PRIVATE struct s_console *p_con;
 
 /*======================================================================*
 			   init_screen
@@ -51,6 +54,7 @@ PUBLIC void init_screen(TTY* p_tty)
 	p_tty->p_console->original_addr      = nr_tty * con_v_mem_size;
 	p_tty->p_console->v_mem_limit        = con_v_mem_size;
 	p_tty->p_console->current_start_addr = p_tty->p_console->original_addr;
+	p_con = p_tty->p_console;
 
 	/* 默认光标位置在最开始处 */
 	p_tty->p_console->cursor = p_tty->p_console->original_addr;
@@ -93,7 +97,7 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 				p_vmem--;
 				p_vmem--;
 			}
-			// search(p_con, str, DEFAULT_CHAR_COLOR);
+			search(p_con, str, DEFAULT_CHAR_COLOR);
 			p_con->cursor = cursorPos;
 		}
 	}else{
@@ -102,6 +106,10 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 		if(SEARCH_MODE == 0){
 			SEARCH_MODE = 1;
 			cursorPos = p_con->cursor;
+			for(int i = 0; i < 256; i++){
+				str[i] = '\0';
+			}
+			p_str = &str[0];
 		}
 		break;
 	case '\n':
@@ -127,6 +135,9 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 			if(p_tab < &tabList[25]){
 				*p_tab = p_con->cursor;
 				p_tab++;
+			}
+			if(SEARCH_MODE == 1){
+				*p_str_tab++ = (p_str - &str[0]);
 			}
 			for(int i = 0; i < 4; i++){
 				*p_vmem++ = ' ';
@@ -154,6 +165,7 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 				for(int i = 0; &tabList[i] <= p_tab; i++){
 					if(tabList[i] == p_con->cursor - 4){
 						p_con->cursor = tabList[i];
+						tabList[i] = -1;
 						flag = 1;
 						break;
 					}
@@ -169,10 +181,12 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 				for(int i = 0; &tabList[i] <= p_tab; i++){
 					if(tabList[i] == p_con->cursor - 4){
 						p_con->cursor = tabList[i];
+						tabList[i] = -1;
 						for(int j = 0; j < 4; j++){
 							--p_str;
 							*p_str = '\0';
 						}
+						*--p_str_tab = -1;
 						flag = 1;
 						break;
 					}
@@ -294,8 +308,6 @@ PUBLIC void scroll_screen(CONSOLE* p_con, int direction)
 }
 
 void search(CONSOLE* p_con, char *str, u8 color){
-		// char tmpstr[] = {'a', '\0'};
-		// str = &tmpstr;
 		u8* p_vmem_start = (u8*)(V_MEM_BASE + p_con->original_addr * 2);
 		u8* p_vmem_end = (u8*)(V_MEM_BASE + cursorPos * 2);
 		u8* tmp;
@@ -310,6 +322,14 @@ void search(CONSOLE* p_con, char *str, u8 color){
 				}
 				tmp++;tmp++;
 			}
+			/* 用于比较字符串中的tab */
+			// tmp = p_vmem_start;
+			// for(int i = 0; i < 25 && str_tab[i] != -1; i++){
+			// 	if((tmp - p_vmem_start)/2 != str_tab[i]){
+			// 		flag = 0;
+			// 		break;
+			// 	}
+			// }
 			if(flag){
 				tmp  = p_vmem_start;
 				for(int i = 0; i < 256 && str[i] != '\0'; i++){
@@ -320,4 +340,19 @@ void search(CONSOLE* p_con, char *str, u8 color){
 			p_vmem_start++;p_vmem_start++;
 		}
 		flush(p_con);
+}
+
+void clearConsole(){
+	if(SEARCH_MODE != 0){
+		return;
+	}
+	u8* p_vmem_start = (u8*)(V_MEM_BASE + p_con->original_addr * 2);
+	u8* p_vmem_end = (u8*)(V_MEM_BASE + p_con->cursor * 2);
+	while(p_vmem_start < p_vmem_end){
+		*p_vmem_start++ = ' ';
+		*p_vmem_start++ = DEFAULT_CHAR_COLOR;
+	}
+	p_con->current_start_addr = p_con->original_addr;
+	p_con->cursor = p_con->original_addr;
+	flush(p_con);
 }

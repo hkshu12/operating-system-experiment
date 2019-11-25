@@ -15,6 +15,7 @@
 #include "global.h"
 #include "proto.h"
 
+EXTERN void clearConsole();
 
 /*======================================================================*
                             kernel_main
@@ -104,8 +105,8 @@ void TestA()
 {
 	int i = 0;
 	while (1) {
-		printf("<Ticks:%x>", get_ticks());
-		milli_delay(200);
+		milli_delay(20000);
+		clearConsole();
 	}
 }
 
@@ -116,7 +117,7 @@ void TestB()
 {
 	int i = 0x1000;
 	while(1){
-		printf("B");
+		// printf("B");
 		milli_delay(200);
 	}
 }
@@ -128,7 +129,7 @@ void TestC()
 {
 	int i = 0x2000;
 	while(1){
-		printf("C");
+		// printf("C");
 		milli_delay(200);
 	}
 }
