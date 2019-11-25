@@ -25,13 +25,17 @@
 PRIVATE void set_cursor(unsigned int position);
 PRIVATE void set_video_start_addr(u32 addr);
 PRIVATE void flush(CONSOLE* p_con);
+PRIVATE void search(CONSOLE* p_con, char *str, u8 color);
 
-EXTERN int SEARCH_MODE;
+EXTERN int SEARCH_MODE;/* 搜索模式不同阶段 */
 
 PUBLIC u32 enterList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 PUBLIC u32 *p_enter = &enterList[0];
 PUBLIC u32 tabList[25] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 PUBLIC u32 *p_tab = &tabList[0];
+PRIVATE char str[256] = {'\0'};
+PRIVATE char *p_str = &str[0];
+PRIVATE u32 cursorPos; /* 用于存储进入搜索模式前的cursor位置 */
 
 /*======================================================================*
 			   init_screen
@@ -80,12 +84,30 @@ PUBLIC int is_current_console(CONSOLE* p_con)
 PUBLIC void out_char(CONSOLE* p_con, char ch)
 {
 	u8* p_vmem = (u8*)(V_MEM_BASE + p_con->cursor * 2);
-
+	if(SEARCH_MODE == 2){
+		if(ch == 0){
+			SEARCH_MODE = 0;// exit search mode
+			for(int i = 0; i < p_con->cursor - cursorPos; i++){
+				*(p_vmem-2) = ' ';
+				*(p_vmem-1) = DEFAULT_CHAR_COLOR;
+				p_vmem--;
+				p_vmem--;
+			}
+			// search(p_con, str, DEFAULT_CHAR_COLOR);
+			p_con->cursor = cursorPos;
+		}
+	}else{
 	switch(ch) {
+	case 0:
+		if(SEARCH_MODE == 0){
+			SEARCH_MODE = 1;
+			cursorPos = p_con->cursor;
+		}
+		break;
 	case '\n':
 		if(SEARCH_MODE == 1){
-			SEARCH_MODE = 0;
-			//TODO: SEARCH MODE
+			SEARCH_MODE = 2;
+			search(p_con, str, RED_CHAR_COLOR);
 			break;
 		}
 		if (p_con->cursor < p_con->original_addr +
@@ -110,12 +132,16 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 				*p_vmem++ = ' ';
 				*p_vmem++ = DEFAULT_CHAR_COLOR;
 				p_con->cursor++;
+				if(SEARCH_MODE == 1){
+					*p_str++ = ' ';
+				}
 			}
 		}
 		break;
 	case '\b':
 
 		if (p_con->cursor > p_con->original_addr) {
+			if(SEARCH_MODE == 0){
 			if((p_con->cursor - p_con->original_addr) % 80 == 0){
 				for(int i = 0; &enterList[i] <= p_enter; i++){
 					if(enterList[i] >= p_con->cursor - 80 && enterList[i] < p_con->cursor){
@@ -138,6 +164,27 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 					*(p_vmem-1) = DEFAULT_CHAR_COLOR;
 				}
 			}
+			}else if(SEARCH_MODE == 1 && p_con->cursor > cursorPos){
+				short flag = 0;
+				for(int i = 0; &tabList[i] <= p_tab; i++){
+					if(tabList[i] == p_con->cursor - 4){
+						p_con->cursor = tabList[i];
+						for(int j = 0; j < 4; j++){
+							--p_str;
+							*p_str = '\0';
+						}
+						flag = 1;
+						break;
+					}
+				}
+				if(!flag){
+					p_con->cursor--;
+					--p_str;
+					*p_str = '\0';
+					*(p_vmem-2) = ' ';
+					*(p_vmem-1) = DEFAULT_CHAR_COLOR;
+				}
+			}
 		}
 		break;
 	default:
@@ -149,10 +196,12 @@ PUBLIC void out_char(CONSOLE* p_con, char ch)
 			}
 			else{
 				*p_vmem++ = RED_CHAR_COLOR;
+				*p_str++ = ch;
 			}
 			p_con->cursor++;
 		}
 		break;
+	}
 	}
 
 	while (p_con->cursor >= p_con->current_start_addr + SCREEN_SIZE) {
@@ -244,3 +293,31 @@ PUBLIC void scroll_screen(CONSOLE* p_con, int direction)
 	flush(p_con);
 }
 
+void search(CONSOLE* p_con, char *str, u8 color){
+		// char tmpstr[] = {'a', '\0'};
+		// str = &tmpstr;
+		u8* p_vmem_start = (u8*)(V_MEM_BASE + p_con->original_addr * 2);
+		u8* p_vmem_end = (u8*)(V_MEM_BASE + cursorPos * 2);
+		u8* tmp;
+		u8 flag;
+		while(p_vmem_start < p_vmem_end){
+			tmp  = p_vmem_start;
+			flag = 1;
+			for(int i = 0; i < 256 && str[i] != '\0'; i++){
+				if(*tmp != str[i]){
+					flag = 0;
+					break;
+				}
+				tmp++;tmp++;
+			}
+			if(flag){
+				tmp  = p_vmem_start;
+				for(int i = 0; i < 256 && str[i] != '\0'; i++){
+					tmp++;
+					*tmp++ = color;
+				}
+			}
+			p_vmem_start++;p_vmem_start++;
+		}
+		flush(p_con);
+}
