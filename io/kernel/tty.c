@@ -25,6 +25,9 @@ PRIVATE void tty_do_write(TTY *p_tty);
 PRIVATE void put_key(TTY *p_tty, u32 key);
 
 PUBLIC int SEARCH_MODE;
+PUBLIC int clearFlag;
+
+EXTERN void clearConsole();
 
 /*======================================================================*
                            task_tty
@@ -41,12 +44,17 @@ PUBLIC void task_tty()
 	}
 	select_console(2);
 	SEARCH_MODE = 0;
+	clearFlag = 0;
 	while (1)
 	{
 		for (p_tty = TTY_FIRST; p_tty < TTY_END; p_tty++)
 		{
 			tty_do_read(p_tty);
 			tty_do_write(p_tty);
+			if(clearFlag && !SEARCH_MODE){
+				clearConsole();
+				clearFlag = 0;
+			}
 		}
 	}
 }

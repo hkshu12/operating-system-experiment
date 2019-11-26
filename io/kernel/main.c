@@ -15,7 +15,7 @@
 #include "global.h"
 #include "proto.h"
 
-EXTERN void clearConsole();
+EXTERN int clearFlag;
 
 /*======================================================================*
                             kernel_main
@@ -106,7 +106,7 @@ void TestA()
 	int i = 0;
 	while (1) {
 		milli_delay(20000);
-		clearConsole();
+		clearFlag = 1;
 	}
 }
 

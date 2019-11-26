@@ -26,6 +26,7 @@ PRIVATE void set_cursor(unsigned int position);
 PRIVATE void set_video_start_addr(u32 addr);
 PRIVATE void flush(CONSOLE* p_con);
 PRIVATE void search(CONSOLE* p_con, char *str, u8 color);
+PUBLIC void clearConsole();
 
 EXTERN int SEARCH_MODE;/* 搜索模式不同阶段 */
 
@@ -346,13 +347,12 @@ void clearConsole(){
 	if(SEARCH_MODE != 0){
 		return;
 	}
-	u8* p_vmem_start = (u8*)(V_MEM_BASE + p_con->original_addr * 2);
-	u8* p_vmem_end = (u8*)(V_MEM_BASE + p_con->cursor * 2);
-	while(p_vmem_start < p_vmem_end){
-		*p_vmem_start++ = ' ';
-		*p_vmem_start++ = DEFAULT_CHAR_COLOR;
+	u8* p_vmem;
+	while (p_con->cursor > p_con->original_addr) {
+			p_vmem = (u8*)(V_MEM_BASE + p_con->cursor * 2);
+			p_con->cursor--;
+			*(p_vmem-2) = ' ';
+			*(p_vmem-1) = DEFAULT_CHAR_COLOR;
 	}
-	p_con->current_start_addr = p_con->original_addr;
-	p_con->cursor = p_con->original_addr;
 	flush(p_con);
 }
