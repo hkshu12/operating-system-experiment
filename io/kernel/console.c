@@ -102,6 +102,13 @@ PUBLIC void out_char(CONSOLE *p_con, char ch)
 				p_vmem--;
 				p_vmem--;
 			}
+			for (int i = 0; i < 25; i++)
+			{
+				if (tabList[i] > cursorPos && tabList[i] < cursorPos + strlength)
+				{
+					tabList[i] = -1;
+				}
+			}
 			search(p_con, str, DEFAULT_CHAR_COLOR);
 			p_con->cursor = cursorPos;
 		}
@@ -213,6 +220,7 @@ PUBLIC void out_char(CONSOLE *p_con, char ch)
 							{
 								p_con->cursor = tabList[i];
 								tabList[i] = -1;
+								p_tab = &tabList[i];
 								flag = 1;
 								break;
 							}
@@ -234,6 +242,7 @@ PUBLIC void out_char(CONSOLE *p_con, char ch)
 						{
 							p_con->cursor = tabList[i];
 							tabList[i] = -1;
+							p_tab = &tabList[i];
 							for (int j = 0; j < 4; j++)
 							{
 								--p_str;
@@ -378,8 +387,21 @@ void search(CONSOLE *p_con, char *str, u8 color)
 	u8 *p_vmem_start = (u8 *)(V_MEM_BASE + p_con->original_addr * 2);
 	u8 *p_vmem_end = (u8 *)(V_MEM_BASE + cursorPos * 2);
 	u8 *tmp;
-	u8 count = p_con->original_addr;
+	u32 count = p_con->original_addr;
 	u8 flag;
+
+	/* debug */
+	// *(p_vmem_start + 160) = '0' + (u8)tabList[0] - count;
+	// *(p_vmem_start + 162) = '0' + (u8)tabList[1] - count;
+	// *(p_vmem_start + 164) = '0' + (u8)tabList[2] - count;
+	// *(p_vmem_start + 166) = '0' + (u8)tabList[3] - count;
+	// *(p_vmem_start + 168) = '0' + (u8)tabList[4] - count;
+
+	// *(p_vmem_start + 170) = '0' + (u8)str_tab[0] - cursorPos;
+	// *(p_vmem_start + 172) = '0' + (u8)str_tab[1] - cursorPos;
+	// *(p_vmem_start + 174) = '0' + (u8)str_tab[2] - cursorPos;
+	// *(p_vmem_start + 176) = '0' + (u8)str_tab[3] - cursorPos;
+	// *(p_vmem_start + 178) = '0' + (u8)str_tab[4] - cursorPos;
 
 	while (p_vmem_start < p_vmem_end)
 	{
@@ -418,15 +440,17 @@ void search(CONSOLE *p_con, char *str, u8 color)
 				}
 				flag = flag2;
 			}
-			// tabList = [ 6 + count, -1, -1... ]
-			// str_tab = [ -1, -1, -1... ]
 			for (int i = 0; &tabList[i] < p_tab && tabList[i] != -1; i++)
 			{
-				if ((u8)tabList[i] - count >= strlength)
+				if (tabList[i] < count)
+				{
+					continue;
+				}
+				u8 offset_1 = tabList[i] - count;
+				if (offset_1 >= strlength)
 				{
 					break;
 				}
-
 				if (flag == 0)
 				{
 					break;
@@ -434,7 +458,6 @@ void search(CONSOLE *p_con, char *str, u8 color)
 				u8 flag2 = 0;
 				for (int j = 0; &str_tab[j] < p_str_tab && str_tab[j] != -1; j++)
 				{
-					u8 offset_1 = tabList[i] - count;
 					u8 offset_2 = str_tab[j] - cursorPos;
 					if (offset_1 == offset_2)
 					{
