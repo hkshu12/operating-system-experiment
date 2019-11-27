@@ -52,7 +52,7 @@ PUBLIC void task_tty()
 			tty_do_read(p_tty);
 			tty_do_write(p_tty);
 			if(clearFlag && !SEARCH_MODE){
-				clearConsole();
+				// clearConsole();
 				clearFlag = 0;
 			}
 		}
