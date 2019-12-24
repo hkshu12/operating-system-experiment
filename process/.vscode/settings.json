@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.html": "html",
+    "global.h": "c",
+    "proto.h": "c"
+  }
+}
